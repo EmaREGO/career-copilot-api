@@ -13,11 +13,17 @@ namespace CareerCopilot.Api.Controllers
         private readonly ILlmService _llmService;
         private readonly ApplicationDbContext _db;
 
-        public CoverLetterController(IPdfExtractionService pdfService, IScraperService scraperService, ILlmService llmService)
+        // Constructor con TODAS las dependencias necesarias
+        public CoverLetterController(
+            IPdfExtractionService pdfService,
+            IScraperService scraperService,
+            ILlmService llmService,
+            ApplicationDbContext db)
         {
             _pdfService = pdfService;
             _scraperService = scraperService;
             _llmService = llmService;
+            _db = db;
         }
 
         [HttpPost("generate/{evaluationId}")]
@@ -41,6 +47,7 @@ namespace CareerCopilot.Api.Controllers
 
                 var coverLetter = await _llmService.GenerateCoverLetterAsync(resumeText, jobText);
 
+                // Persistencia en la DB
                 eval.CoverLetter = coverLetter;
                 await _db.SaveChangesAsync();
 
@@ -50,8 +57,10 @@ namespace CareerCopilot.Api.Controllers
                     CoverLetter = coverLetter
                 });
             }
-            catch
+            catch (Exception ex)
             {
+                // Loguear el error para debugear
+                Console.WriteLine($"[Error CoverLetter]: {ex.Message}");
                 return StatusCode(500, "Ocurrió un error al generar la carta.");
             }
         }
