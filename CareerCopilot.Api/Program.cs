@@ -1,5 +1,5 @@
-using CareerCopilot.Api.Data;
 using Microsoft.EntityFrameworkCore;
+using CareerCopilot.Api.Data;
 using Hangfire;
 using CareerCopilot.Api.Services;
 
