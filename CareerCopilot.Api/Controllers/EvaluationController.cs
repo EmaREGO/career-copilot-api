@@ -55,9 +55,22 @@ namespace CareerCopilot.Api.Controllers
             if (eval == null) return NotFound();
 
             object? analysisResult = null;
-            if (!string.IsNullOrEmpty(eval.ResultJson))
+            if (!string.IsNullOrEmpty(eval.ResultJson) && eval.ResultJson != "{}")
             {
-                analysisResult = JsonSerializer.Deserialize<object>(eval.ResultJson);
+                try
+                {
+                    var options = new JsonSerializerOptions
+                    {
+                        AllowTrailingCommas = true,
+                        PropertyNameCaseInsensitive = true,
+                        ReadCommentHandling = JsonCommentHandling.Skip
+                    };
+                    analysisResult = JsonSerializer.Deserialize<object>(eval.ResultJson, options);
+                }
+                catch
+                {
+                    analysisResult = new { raw_text = eval.ResultJson };
+                }
             }
 
             return Ok(new
