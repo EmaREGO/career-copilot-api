@@ -40,24 +40,23 @@ builder.Services.AddCors(options => {
 
 var app = builder.Build();
 
-
 app.UseSwagger();
-app.UseSwaggerUI(c => {
+app.UseSwaggerUI(c =>
+{
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Career Copilot API v1");
     c.RoutePrefix = string.Empty; 
 });
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseHangfireDashboard();
-}
-
-app.UseHttpsRedirection();
-app.UseCors(options => options
+// CONFIGURACIÓN GLOBAL DE CORS 
+app.UseCors(policy => policy
     .AllowAnyOrigin()
     .AllowAnyMethod()
     .AllowAnyHeader());
+
+app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
+
+app.UseHangfireDashboard();
 
 app.Run();
