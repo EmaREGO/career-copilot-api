@@ -25,19 +25,18 @@ namespace CareerCopilot.Api.Services
 
         public async Task<string> AnalyzeMatchAsync(string resumeText, string jobText)
         {
-            Console.WriteLine($"[DEBUG] Procesando análisis para Gemini...");
+            Console.WriteLine($"[DEBUG] Enviando a Gemini v1...");
 
-            var systemPrompt = "Actúa como reclutador IT. Analiza CV vs Vacante. Devuelve SOLO un JSON válido con match_percentage (int), complexity_score (int), red_flags (array), strengths (array), missing_skills (array), ats_keywords_to_add (array), cv_improvement_suggestions (array de objetos {section, suggestion}).";
+            var systemPrompt = "Eres un reclutador. Analiza el CV vs la Vacante. Devuelve un JSON con: match_percentage (numero), complexity_score (numero), red_flags (lista), strengths (lista), missing_skills (lista), ats_keywords_to_add (lista), cv_improvement_suggestions (lista de objetos con section y suggestion).";
 
             var payload = new
             {
                 contents = new[] {
                     new { parts = new[] { new { text = $"{systemPrompt}\n\nCV:\n{resumeText}\n\nVACANTE:\n{jobText}" } } }
-                },
-                generationConfig = new { temperature = 0.2 }
+                }
             };
 
-            var fullUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+            var fullUrl = $"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={_apiKey}";
 
             var jsonPayload = JsonSerializer.Serialize(payload);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
@@ -47,8 +46,8 @@ namespace CareerCopilot.Api.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"[DEBUG] Error de Gemini {response.StatusCode}: {responseBody}");
-                throw new Exception($"Error de Gemini API: {response.StatusCode}");
+                Console.WriteLine($"[DEBUG] Error Gemini {response.StatusCode}: {responseBody}");
+                throw new Exception($"Gemini Error: {response.StatusCode}");
             }
 
             using var doc = JsonDocument.Parse(responseBody);
@@ -62,8 +61,8 @@ namespace CareerCopilot.Api.Services
 
         public async Task<string> GenerateCoverLetterAsync(string resumeText, string jobText)
         {
-            var fullUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
-            var payload = new { contents = new[] { new { parts = new[] { new { text = $"Escribe una carta de presentación breve para este CV:\n{resumeText}\ny esta vacante:\n{jobText}" } } } } };
+            var fullUrl = $"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+            var payload = new { contents = new[] { new { parts = new[] { new { text = $"Escribe una carta de presentación para:\n{resumeText}\ny esta vacante:\n{jobText}" } } } } };
 
             var response = await _httpClient.PostAsync(fullUrl, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
             var body = await response.Content.ReadAsStringAsync();
