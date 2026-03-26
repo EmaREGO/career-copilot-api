@@ -54,7 +54,7 @@ namespace CareerCopilot.Api.Services
                 },
                 generationConfig = new
                 {
-                    responseMimeType = "application/json",
+                    response_mime_type = "application/json",
                     temperature = 0.2
                 }
             };
@@ -97,7 +97,7 @@ namespace CareerCopilot.Api.Services
                 generationConfig = new 
                 {
                     response_mime_type = "application/json",
-                    temperature = 0.2 //Era 0.7 antes                
+                    temperature = 0.7               
                 }
             };
 
