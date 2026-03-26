@@ -20,23 +20,23 @@ namespace CareerCopilot.Api.Services
         {
             _httpClient = httpClient;
             _configuration = configuration;
-            _apiKey = _configuration["GeminiAI:ApiKey"] ?? throw new Exception("API Key faltante.");
+            _apiKey = _configuration["GeminiAI:ApiKey"] ?? throw new Exception("Falta API Key");
         }
 
         public async Task<string> AnalyzeMatchAsync(string resumeText, string jobText)
         {
-            Console.WriteLine($"[DEBUG] Enviando a Gemini v1 (Estable)...");
+            Console.WriteLine($"[DEBUG] Iniciando envío a Google Gemini...");
 
             var systemPrompt = "Analiza CV vs Vacante. Devuelve SOLO un JSON con match_percentage (int) y cv_improvement_suggestions (array de strings).";
 
             var payload = new
             {
                 contents = new[] {
-                    new { parts = new[] { new { text = $"{systemPrompt}\n\nCV:\n{resumeText}\n\nVACANTE:\n{jobText}" } } }
+                    new { parts = new[] { new { text = $"{systemPrompt}\n\nCV:\n{resumeText}\n\nVacante:\n{jobText}" } } }
                 }
             };
 
-            var fullUrl = $"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+            var fullUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={_apiKey}";
 
             var jsonPayload = JsonSerializer.Serialize(payload);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
@@ -46,8 +46,8 @@ namespace CareerCopilot.Api.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"[DEBUG] ERROR GEMINI: {responseBody}");
-                throw new Exception($"Error {response.StatusCode}: {responseBody}");
+                Console.WriteLine($"[DEBUG] ERROR DE GOOGLE: {responseBody}");
+                throw new Exception($"Google Error {response.StatusCode}");
             }
 
             using var doc = JsonDocument.Parse(responseBody);
@@ -61,8 +61,7 @@ namespace CareerCopilot.Api.Services
 
         public async Task<string> GenerateCoverLetterAsync(string resumeText, string jobText)
         {
-            // También usamos v1 aquí
-            var fullUrl = $"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+            var fullUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key={_apiKey}";
             var payload = new { contents = new[] { new { parts = new[] { new { text = $"Escribe una carta breve para este CV:\n{resumeText}\ny vacante:\n{jobText}" } } } } };
             var response = await _httpClient.PostAsync(fullUrl, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
             var body = await response.Content.ReadAsStringAsync();
