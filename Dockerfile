@@ -1,21 +1,35 @@
-FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+# ETAPA DE BASE 
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
 WORKDIR /app
-
-# Copiamos todo el contenido de la raíz
-COPY . ./
-RUN dotnet restore
-
-# IMPORTANTE: Aquí le decimos que el proyecto está dentro de la carpeta
-RUN dotnet publish CareerCopilot.Api/CareerCopilot.Api.csproj -c Release -o out
-
-FROM mcr.microsoft.com/dotnet/aspnet:8.0
-WORKDIR /app
-COPY --from=build /app/out .
-
-# Instalación de dependencias de Playwright
-RUN apt-get update && apt-get install -y libgbm1 libasound2 libnss3 libxss1 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxcomposite1 libxdamage1 libxrandr2 libpango-1.0-0 libcairo2 libxkbcommon0 && rm -rf /var/lib/apt/lists/*
-
-ENV ASPNETCORE_URLS=http://+:8080
 EXPOSE 8080
+
+# dependencias del sistema y el navegador
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+# -----------------------------------------------
+
+# ETAPA DE CONSTRUCCIÓN (SDK)
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+COPY ["CareerCopilot.Api/CareerCopilot.Api.csproj", "CareerCopilot.Api/"]
+RUN dotnet restore "CareerCopilot.Api/CareerCopilot.Api.csproj"
+COPY . .
+WORKDIR "/src/CareerCopilot.Api"
+RUN dotnet build "CareerCopilot.Api.csproj" -c Release -o /app/build
+
+# ETAPA DE PUBLICACIÓN
+FROM build AS publish
+RUN dotnet publish "CareerCopilot.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# ETAPA FINAL (Donde corre la app)
+FROM base AS final
+WORKDIR /app
+COPY --from=publish /app/publish .
+
+RUN dotnet tool install --global Microsoft.Playwright.CLI
+ENV PATH="$PATH:/root/.dotnet/tools"
+RUN playwright install --with-deps chromium
 
 ENTRYPOINT ["dotnet", "CareerCopilot.Api.dll"]
