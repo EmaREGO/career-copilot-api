@@ -21,30 +21,23 @@ namespace CareerCopilot.Api.Services
         {
             _httpClient = httpClient;
             _configuration = configuration;
-
             _apiKey = _configuration["GeminiAI:ApiKey"] ?? throw new Exception("API Key no configurada.");
             _apiUrl = _configuration["GeminiAI:BaseUrl"] ?? throw new Exception("Base URL no configurada.");
         }
 
         public async Task<string> AnalyzeMatchAsync(string resumeText, string jobText)
         {
-            // PROMPT AJUSTADO
-            var systemPrompt = @"Actúa como un Arquitecto de Software Senior y Reclutador experto en ATS. 
-                Analiza el CV contra la vacante de forma crítica.
-                
-                REGLAS:
-                1. Identifica Red Flags, Complexity Score (1-10), Strengths, Missing Skills y ATS Keywords.
-                2. Sugiere mejoras específicas.
-                
-                DEVUELVE ÚNICAMENTE UN JSON COMPACTO EN UNA SOLA LÍNEA, SIN SALTOS DE LÍNEA REALES NI MARKDOWN:
+            var systemPrompt = @"Actúa como Arquitecto de Software Senior. Analiza CV vs Vacante.
+                DEVUELVE EXCLUSIVAMENTE UN JSON VÁLIDO. SIN TEXTO ADICIONAL.
+                Estructura:
                 {
-                    ""match_percentage"": 85,
-                    ""complexity_score"": 8,
-                    ""red_flags"": [{ ""flag"": """", ""reason"": """", ""severity"": """" }],
+                    ""match_percentage"": 0,
+                    ""complexity_score"": 0,
+                    ""red_flags"": [],
                     ""strengths"": [],
                     ""missing_skills"": [],
                     ""ats_keywords_to_add"": [],
-                    ""cv_improvement_suggestions"": [{ ""section"": """", ""suggestion"": """" }]
+                    ""cv_improvement_suggestions"": []
                 }";
 
             var payload = new
@@ -54,70 +47,51 @@ namespace CareerCopilot.Api.Services
                 },
                 generationConfig = new
                 {
-                    response_mime_type = "application/json",
-                    temperature = 0.2
+                    temperature = 0.1
                 }
             };
 
             var jsonPayload = JsonSerializer.Serialize(payload);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
             var response = await _httpClient.PostAsync($"{_apiUrl}?key={_apiKey}", content);
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
-            {
-                throw new Exception($"Error de Gemini API ({response.StatusCode}): {responseBody}");
-            }
+                throw new Exception($"Error Gemini ({response.StatusCode}): {responseBody}");
 
             using var doc = JsonDocument.Parse(responseBody);
-
             if (doc.RootElement.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0)
             {
                 var rawText = candidates[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString() ?? "{}";
-
-                // LIMPIEZA SEGURA
-                rawText = rawText.Replace("```json", "").Replace("```", "").Trim();
-
-                return rawText;
+                // Limpieza de Markdown 
+                return rawText.Replace("```json", "").Replace("```", "").Trim();
             }
-
-            throw new Exception("Gemini no devolvió resultados válidos.");
+            throw new Exception("Gemini no devolvió resultados.");
         }
 
         public async Task<string> GenerateCoverLetterAsync(string resumeText, string jobText)
         {
-            var systemPrompt = @"Eres un Copywriter experto. Escribe una Carta de Presentación persuasiva, humana y directa. Máximo 3 párrafos. Cero clichés. Devuelve solo el texto plano.";
+            var systemPrompt = "Eres un experto en reclutamiento. Escribe una carta de presentación persuasiva basada en el CV y la vacante. Devuelve solo el texto de la carta.";
 
             var payload = new
             {
                 contents = new[] {
                     new { parts = new[] { new { text = $"{systemPrompt}\n\nCV:\n{resumeText}\n\nVACANTE:\n{jobText}" } } }
                 },
-                generationConfig = new 
-                {
-                    response_mime_type = "application/json",
-                    temperature = 0.7               
-                }
+                generationConfig = new { temperature = 0.7 }
             };
 
             var jsonPayload = JsonSerializer.Serialize(payload);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-
             var response = await _httpClient.PostAsync($"{_apiUrl}?key={_apiKey}", content);
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
-            {
-                throw new Exception($"Error de Gemini API: {responseBody}");
-            }
+                throw new Exception($"Error Gemini: {responseBody}");
 
             using var doc = JsonDocument.Parse(responseBody);
-
             if (doc.RootElement.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0)
-            {
                 return candidates[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString() ?? "";
-            }
 
             return "No se pudo generar la carta.";
         }
