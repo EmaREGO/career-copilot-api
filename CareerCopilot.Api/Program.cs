@@ -8,7 +8,7 @@ var builder = WebApplication.CreateBuilder(args);
 //Conexion a SQL Server usando la cadena de appsettings.json
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(connectionString));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Configuracion Hangfire
 builder.Services.AddHangfire(config => config
@@ -30,7 +30,16 @@ builder.Services.AddHttpClient<ILlmService, LlmService>();
 builder.Services.AddScoped<ILlmService, LlmService>();
 builder.Services.AddScoped<CareerAnalysisJob>();
 
+builder.Services.AddCors(options => {
+    options.AddPolicy("AllowAll", policy => {
+        policy.AllowAnyOrigin()
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
+
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -41,6 +50,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("AllowAll");
 app.UseAuthorization();
 app.MapControllers();
 

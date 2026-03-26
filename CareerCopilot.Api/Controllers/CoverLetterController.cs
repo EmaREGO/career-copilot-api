@@ -1,4 +1,5 @@
-﻿using CareerCopilot.Api.Data;
+﻿//CoverLetterController.cs
+using CareerCopilot.Api.Data;
 using CareerCopilot.Api.Services;
 using Microsoft.AspNetCore.Mvc;
 
