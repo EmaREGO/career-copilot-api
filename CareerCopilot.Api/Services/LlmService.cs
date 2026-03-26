@@ -1,6 +1,6 @@
 ﻿using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration; 
 
 namespace CareerCopilot.Api.Services
 {
@@ -15,85 +15,69 @@ namespace CareerCopilot.Api.Services
         private readonly HttpClient _httpClient;
         private readonly IConfiguration _configuration;
         private readonly string _apiKey;
-        private readonly string _apiUrl;
+        private readonly string _baseUrl;
 
         public LlmService(HttpClient httpClient, IConfiguration configuration)
         {
             _httpClient = httpClient;
             _configuration = configuration;
-            _apiKey = _configuration["GeminiAI:ApiKey"] ?? throw new Exception("API Key no configurada.");
-            _apiUrl = _configuration["GeminiAI:BaseUrl"] ?? throw new Exception("Base URL no configurada.");
+            _apiKey = _configuration["GeminiAI:ApiKey"] ?? throw new Exception("API Key faltante.");
+            _baseUrl = _configuration["GeminiAI:BaseUrl"] ?? "https://generativelanguage.googleapis.com";
         }
 
         public async Task<string> AnalyzeMatchAsync(string resumeText, string jobText)
         {
-            var systemPrompt = @"Actúa como Arquitecto de Software Senior. Analiza CV vs Vacante.
-                DEVUELVE EXCLUSIVAMENTE UN JSON VÁLIDO. SIN TEXTO ADICIONAL.
-                Estructura:
-                {
-                    ""match_percentage"": 0,
-                    ""complexity_score"": 0,
-                    ""red_flags"": [],
-                    ""strengths"": [],
-                    ""missing_skills"": [],
-                    ""ats_keywords_to_add"": [],
-                    ""cv_improvement_suggestions"": []
-                }";
+            Console.WriteLine($"[DEBUG] CV Longitud: {resumeText?.Length ?? 0}");
+            Console.WriteLine($"[DEBUG] Vacante Longitud: {jobText?.Length ?? 0}");
+
+            if (string.IsNullOrWhiteSpace(jobText) || jobText.Length < 50)
+            {
+                throw new Exception("El Scraper no obtuvo suficiente texto de la vacante.");
+            }
+
+            var systemPrompt = "Actúa como reclutador IT. Analiza CV vs Vacante. Devuelve SOLO un JSON válido con: match_percentage (int), complexity_score (int), red_flags (array), strengths (array), missing_skills (array), ats_keywords_to_add (array), cv_improvement_suggestions (array de objetos {section, suggestion}).";
 
             var payload = new
             {
                 contents = new[] {
                     new { parts = new[] { new { text = $"{systemPrompt}\n\nCV:\n{resumeText}\n\nVACANTE:\n{jobText}" } } }
                 },
-                generationConfig = new
-                {
-                    temperature = 0.1
-                }
+                generationConfig = new { temperature = 0.2 }
             };
+
+            var fullUrl = $"{_baseUrl.TrimEnd('/')}/v1/models/gemini-1.5-flash:generateContent?key={_apiKey}";
 
             var jsonPayload = JsonSerializer.Serialize(payload);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync($"{_apiUrl}?key={_apiKey}", content);
+
+            var response = await _httpClient.PostAsync(fullUrl, content);
             var responseBody = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
-                throw new Exception($"Error Gemini ({response.StatusCode}): {responseBody}");
+            {
+                Console.WriteLine($"[DEBUG] Error Gemini {response.StatusCode}: {responseBody}");
+                throw new Exception($"Error de Gemini API: {response.StatusCode}");
+            }
 
             using var doc = JsonDocument.Parse(responseBody);
-            if (doc.RootElement.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0)
-            {
-                var rawText = candidates[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString() ?? "{}";
-                // Limpieza de Markdown 
-                return rawText.Replace("```json", "").Replace("```", "").Trim();
-            }
-            throw new Exception("Gemini no devolvió resultados.");
+            var rawText = doc.RootElement.GetProperty("candidates")[0]
+                                         .GetProperty("content")
+                                         .GetProperty("parts")[0]
+                                         .GetProperty("text").GetString() ?? "{}";
+
+            return rawText.Replace("```json", "").Replace("```", "").Trim();
         }
 
         public async Task<string> GenerateCoverLetterAsync(string resumeText, string jobText)
         {
-            var systemPrompt = "Eres un experto en reclutamiento. Escribe una carta de presentación persuasiva basada en el CV y la vacante. Devuelve solo el texto de la carta.";
+            var fullUrl = $"{_baseUrl.TrimEnd('/')}/v1/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+            var payload = new { contents = new[] { new { parts = new[] { new { text = $"Escribe una carta de presentación para este CV:\n{resumeText}\ny esta vacante:\n{jobText}" } } } } };
 
-            var payload = new
-            {
-                contents = new[] {
-                    new { parts = new[] { new { text = $"{systemPrompt}\n\nCV:\n{resumeText}\n\nVACANTE:\n{jobText}" } } }
-                },
-                generationConfig = new { temperature = 0.7 }
-            };
+            var response = await _httpClient.PostAsync(fullUrl, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
+            var body = await response.Content.ReadAsStringAsync();
 
-            var jsonPayload = JsonSerializer.Serialize(payload);
-            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync($"{_apiUrl}?key={_apiKey}", content);
-            var responseBody = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                throw new Exception($"Error Gemini: {responseBody}");
-
-            using var doc = JsonDocument.Parse(responseBody);
-            if (doc.RootElement.TryGetProperty("candidates", out var candidates) && candidates.GetArrayLength() > 0)
-                return candidates[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString() ?? "";
-
-            return "No se pudo generar la carta.";
+            using var doc = JsonDocument.Parse(body);
+            return doc.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString() ?? "";
         }
     }
 }
