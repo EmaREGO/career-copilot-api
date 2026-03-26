@@ -7,7 +7,18 @@ using CareerCopilot.Api.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-                      ?? builder.Configuration["DATABASE_URL"];
+                      ?? builder.Configuration["DATABASE_URL"]
+                      ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    Console.WriteLine("ERROR: No se encontró la cadena de conexión en ninguna variable.");
+}
+else
+{
+    Console.WriteLine("Conexión detectada correctamente.");
+}
+
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
