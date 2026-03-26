@@ -12,10 +12,10 @@ namespace CareerCopilot.Api.Services
         public async Task<string> ScrapeJobDescriptionAsync(string url)
         {
             using var playwright = await Playwright.CreateAsync();
-            // Lanzar el navegador en modo "Headless" (Sin ventana visible)
             await using var browser = await playwright.Chromium.LaunchAsync(new BrowserTypeLaunchOptions
             {
-                Headless = true
+                Headless = true,
+                Args = new[] { "--no-sandbox", "--disable-setuid-sandbox" } // <--- AGREGA ESTO
             });
 
             // Aniadir un contexto con un User-Agent de un chrome real

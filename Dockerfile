@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright/dotnet:v1.48.0-jammy AS base
+FROM mcr.microsoft.com/playwright/dotnet:v1.58.0-jammy AS base
 WORKDIR /app
 EXPOSE 8080
 
