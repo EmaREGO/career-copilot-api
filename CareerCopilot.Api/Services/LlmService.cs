@@ -25,9 +25,9 @@ namespace CareerCopilot.Api.Services
 
         public async Task<string> AnalyzeMatchAsync(string resumeText, string jobText)
         {
-            Console.WriteLine($"[DEBUG] Intentando análisis con Gemini 1.5 Flash...");
+            Console.WriteLine($"[DEBUG] Enviando a Gemini v1 (Estable)...");
 
-            var systemPrompt = "Analiza CV vs Vacante. Devuelve solo un JSON con match_percentage (int) y cv_improvement_suggestions (array).";
+            var systemPrompt = "Analiza CV vs Vacante. Devuelve SOLO un JSON con match_percentage (int) y cv_improvement_suggestions (array de strings).";
 
             var payload = new
             {
@@ -36,7 +36,7 @@ namespace CareerCopilot.Api.Services
                 }
             };
 
-            var fullUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+            var fullUrl = $"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={_apiKey}";
 
             var jsonPayload = JsonSerializer.Serialize(payload);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
@@ -46,23 +46,24 @@ namespace CareerCopilot.Api.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"[DEBUG] Error de Google: {responseBody}");
-                throw new Exception($"Google Error: {response.StatusCode}");
+                Console.WriteLine($"[DEBUG] ERROR GEMINI: {responseBody}");
+                throw new Exception($"Error {response.StatusCode}: {responseBody}");
             }
 
             using var doc = JsonDocument.Parse(responseBody);
-            var rawText = doc.RootElement.GetProperty("candidates")[0]
+            var result = doc.RootElement.GetProperty("candidates")[0]
                                          .GetProperty("content")
                                          .GetProperty("parts")[0]
                                          .GetProperty("text").GetString() ?? "{}";
 
-            return rawText.Replace("```json", "").Replace("```", "").Trim();
+            return result.Replace("```json", "").Replace("```", "").Trim();
         }
 
         public async Task<string> GenerateCoverLetterAsync(string resumeText, string jobText)
         {
-            var fullUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
-            var payload = new { contents = new[] { new { parts = new[] { new { text = $"Escribe una carta de presentación para este CV:\n{resumeText}\ny vacante:\n{jobText}" } } } } };
+            // También usamos v1 aquí
+            var fullUrl = $"https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+            var payload = new { contents = new[] { new { parts = new[] { new { text = $"Escribe una carta breve para este CV:\n{resumeText}\ny vacante:\n{jobText}" } } } } };
             var response = await _httpClient.PostAsync(fullUrl, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
             var body = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(body);
