@@ -11,36 +11,23 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
                       ?? Environment.GetEnvironmentVariable("DATABASE_URL");
 
 if (string.IsNullOrEmpty(connectionString))
-{
-    Console.WriteLine("ERROR: No se encontró la cadena de conexión en ninguna variable.");
-}
+    Console.WriteLine("ERROR: No se encontró la cadena de conexión.");
 else
-{
     Console.WriteLine("Conexión detectada correctamente.");
-}
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
-// Configuracion Hangfire
 builder.Services.AddHangfire(config => config
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
     .UseRecommendedSerializerSettings()
     .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connectionString)));
 
-// Add Worker (Procesa las tareas)
 builder.Services.AddHangfireServer();
-// Add services to the container.
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddScoped<IScraperService, ScraperService>();
-builder.Services.AddScoped<IPdfExtractionService, PdfExtractionService>();
-builder.Services.AddHttpClient<ILlmService, LlmService>();
-//builder.Services.AddScoped<ILlmService, LlmService>();
-builder.Services.AddScoped<CareerAnalysisJob>();
 
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowAll", policy => {
@@ -50,33 +37,29 @@ builder.Services.AddCors(options => {
     });
 });
 
+builder.Services.AddScoped<IScraperService, ScraperService>();
+builder.Services.AddScoped<IPdfExtractionService, PdfExtractionService>();
+builder.Services.AddHttpClient<ILlmService, LlmService>();
+builder.Services.AddScoped<CareerAnalysisJob>();
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
-    var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<ApplicationDbContext>();
+    var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     context.Database.Migrate();
 }
-// CONFIGURACIÓN GLOBAL DE CORS 
-app.UseCors(policy => policy
-    .AllowAnyOrigin()
-    .AllowAnyMethod()
-    .AllowAnyHeader());
+
+app.UseCors("AllowAll");
 
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     c.SwaggerEndpoint("/swagger/v1/swagger.json", "Career Copilot API v1");
-    c.RoutePrefix = string.Empty; 
+    c.RoutePrefix = string.Empty;
 });
 
-
-
-app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
-
 app.UseHangfireDashboard();
-
 app.Run();
