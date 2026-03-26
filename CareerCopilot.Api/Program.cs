@@ -40,6 +40,12 @@ builder.Services.AddCors(options => {
 
 var app = builder.Build();
 
+// CONFIGURACIÓN GLOBAL DE CORS 
+app.UseCors(policy => policy
+    .AllowAnyOrigin()
+    .AllowAnyMethod()
+    .AllowAnyHeader());
+
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -47,11 +53,7 @@ app.UseSwaggerUI(c =>
     c.RoutePrefix = string.Empty; 
 });
 
-// CONFIGURACIÓN GLOBAL DE CORS 
-app.UseCors(policy => policy
-    .AllowAnyOrigin()
-    .AllowAnyMethod()
-    .AllowAnyHeader());
+
 
 app.UseHttpsRedirection();
 app.UseAuthorization();

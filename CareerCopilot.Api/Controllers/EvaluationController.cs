@@ -9,8 +9,8 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace CareerCopilot.Api.Controllers
 {
-    [ApiController]
     [Route("api/[controller]")]
+    [ApiController]
     public class EvaluationController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
@@ -22,17 +22,17 @@ namespace CareerCopilot.Api.Controllers
         }
 
         [HttpPost("analyze")]
-        public IActionResult Analyze(IFormFile file, [FromQuery] string jobUrl)
+        public IActionResult Analyze([FromForm] IFormFile file, [FromQuery] string jobUrl)
         {
             if (file == null || string.IsNullOrEmpty(jobUrl))
                 return BadRequest("Archivo y URL de vacante son requeridos.");
 
             // Validar que exista al menos un perfil para evitar error de FK
-            var profileExists = _db.Profiles.Any(p => p.Id == 1);
-            if (!profileExists)
-            {
-                return BadRequest("No existe un perfil con ID 1 en la base de datos. Por favor, crea uno primero.");
-            }
+            //var profileExists = _db.Profiles.Any(p => p.Id == 1);
+            //if (!profileExists)
+           // {
+            //    return BadRequest("No existe un perfil con ID 1 en la base de datos. Por favor, crea uno primero.");
+           // }
 
             // Preparar ruta temporal
             var filePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".pdf");
@@ -62,7 +62,7 @@ namespace CareerCopilot.Api.Controllers
             });
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<IActionResult> GetStatus(int id)
         {
             var eval = await _db.Evaluations.FindAsync(id);
