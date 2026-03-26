@@ -1,5 +1,4 @@
-﻿// EvaluationController.cs
-using System.IO;
+﻿using System.IO;
 using System.Text.Json;
 using CareerCopilot.Api.Data;
 using CareerCopilot.Api.Models;
@@ -14,52 +13,39 @@ namespace CareerCopilot.Api.Controllers
     public class EvaluationController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
+        private readonly IPdfExtractionService _pdfService; // <--- Inyectado correctamente
 
-        // Inyectar el DbContext a través del constructor
-        public EvaluationController(ApplicationDbContext db)
+        public EvaluationController(ApplicationDbContext db, IPdfExtractionService pdfService)
         {
             _db = db;
+            _pdfService = pdfService;
         }
 
         [HttpPost("analyze")]
-        public IActionResult Analyze([FromForm] IFormFile file, [FromQuery] string jobUrl)
+        public async Task<IActionResult> Analyze([FromForm] IFormFile file, [FromQuery] string jobUrl)
         {
             if (file == null || string.IsNullOrEmpty(jobUrl))
-                return BadRequest("Archivo y URL de vacante son requeridos.");
+                return BadRequest("Requeridos archivo y URL.");
 
-            // Validar que exista al menos un perfil para evitar error de FK
-            //var profileExists = _db.Profiles.Any(p => p.Id == 1);
-            //if (!profileExists)
-           // {
-            //    return BadRequest("No existe un perfil con ID 1 en la base de datos. Por favor, crea uno primero.");
-           // }
-
-            // Preparar ruta temporal
-            var filePath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString() + ".pdf");
-
-            using (var stream = System.IO.File.Create(filePath))
-            {
-                file.CopyTo(stream);
-            }
+            // Extraer el texto usando el campo inyectado '_pdfService'
+            using var stream = file.OpenReadStream();
+            string resumeText = await _pdfService.ExtractTextAsync(stream);
 
             var eval = new Evaluation
             {
                 VacancyUrl = jobUrl,
                 Status = "Pending",
-                CandidateProfileId = 1
+                CandidateProfileId = 1,
+                ResultJson = "{}"
             };
 
             _db.Evaluations.Add(eval);
-            _db.SaveChanges();
+            await _db.SaveChangesAsync();
 
-            // Encolar
-            BackgroundJob.Enqueue<CareerAnalysisJob>(x => x.RunAnalysis(eval.Id, filePath, jobUrl));
+            // Encolar el trabajo en Hangfire
+            BackgroundJob.Enqueue<CareerAnalysisJob>(x => x.RunAnalysis(eval.Id, resumeText, jobUrl));
 
-            return Ok(new
-            {
-                Message = "Análisis iniciado. Monitorea en /hangfire",
-                EvaluationId = eval.Id
-            });
+            return Ok(new { Message = "Análisis iniciado.", EvaluationId = eval.Id });
         }
 
         [HttpGet("{id:int}")]
@@ -68,7 +54,6 @@ namespace CareerCopilot.Api.Controllers
             var eval = await _db.Evaluations.FindAsync(id);
             if (eval == null) return NotFound();
 
-            // Si el análisis terminó, deserializamos el ResultJson para que se vea bien en Swagger
             object? analysisResult = null;
             if (!string.IsNullOrEmpty(eval.ResultJson))
             {
