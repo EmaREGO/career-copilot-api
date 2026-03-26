@@ -94,7 +94,11 @@ namespace CareerCopilot.Api.Services
                 contents = new[] {
                     new { parts = new[] { new { text = $"{systemPrompt}\n\nCV:\n{resumeText}\n\nVACANTE:\n{jobText}" } } }
                 },
-                generationConfig = new { temperature = 0.7 }
+                generationConfig = new 
+                {
+                    response_mime_type = "application/json",
+                    temperature = 0.2 //Era 0.7 antes                
+                }
             };
 
             var jsonPayload = JsonSerializer.Serialize(payload);
