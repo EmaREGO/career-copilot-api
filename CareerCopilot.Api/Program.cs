@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using CareerCopilot.Api.Data;
 using Hangfire;
+using Hangfire.PostgreSql;
 using CareerCopilot.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,14 +9,14 @@ var builder = WebApplication.CreateBuilder(args);
 //Conexion a SQL Server usando la cadena de appsettings.json
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 // Configuracion Hangfire
 builder.Services.AddHangfire(config => config
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
     .UseRecommendedSerializerSettings()
-    .UseSqlServerStorage(connectionString)); // La misma bd
+    .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connectionString)));
 
 // Add Worker (Procesa las tareas)
 builder.Services.AddHangfireServer();
@@ -27,7 +28,7 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddScoped<IScraperService, ScraperService>();
 builder.Services.AddScoped<IPdfExtractionService, PdfExtractionService>();
 builder.Services.AddHttpClient<ILlmService, LlmService>();
-builder.Services.AddScoped<ILlmService, LlmService>();
+//builder.Services.AddScoped<ILlmService, LlmService>();
 builder.Services.AddScoped<CareerAnalysisJob>();
 
 builder.Services.AddCors(options => {
