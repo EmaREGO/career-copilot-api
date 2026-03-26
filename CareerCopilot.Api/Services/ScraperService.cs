@@ -28,7 +28,7 @@ namespace CareerCopilot.Api.Services
             var page = await context.NewPageAsync();
 
             // Navegar a la URL de la vacante
-            await page.GotoAsync(url, new PageGotoOptions { WaitUntil = WaitUntilState.NetworkIdle, Timeout = 30000 });
+            await page.GotoAsync(url, new PageGotoOptions { WaitUntil = WaitUntilState.Load, Timeout = 60000 });
 
             var cleanText = await page.EvaluateAsync<string>(@"() => {
                 // 1. Eliminar etiquetas ruidosas (menús, footers, scripts, estilos, botones)
