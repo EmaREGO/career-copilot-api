@@ -6,7 +6,8 @@ using CareerCopilot.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+                      ?? builder.Configuration["DATABASE_URL"];
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
