@@ -52,7 +52,7 @@ namespace CareerCopilot.Api.Services
                 }
             };
 
-            var url = $"https://generativelanguage.googleapis.com/v1/models/{_model}:generateContent?key={_apiKey}";
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
 
             var jsonPayload = JsonSerializer.Serialize(payload);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
@@ -74,7 +74,7 @@ namespace CareerCopilot.Api.Services
 
         public async Task<string> GenerateCoverLetterAsync(string resumeText, string jobText)
         {
-            var url = $"https://generativelanguage.googleapis.com/v1/models/{_model}:generateContent?key={_apiKey}";
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{_model}:generateContent?key={_apiKey}";
             var payload = new
             {
                 contents = new[] {
