@@ -20,23 +20,23 @@ namespace CareerCopilot.Api.Services
         {
             _httpClient = httpClient;
             _configuration = configuration;
-            _apiKey = _configuration["GeminiAI:ApiKey"] ?? throw new Exception("API Key faltante.");
+            _apiKey = _configuration["GeminiAI:ApiKey"] ?? throw new Exception("API Key faltante en Railway.");
         }
 
         public async Task<string> AnalyzeMatchAsync(string resumeText, string jobText)
         {
-            Console.WriteLine($"[DEBUG] Intentando con v1beta y modelo flash...");
+            Console.WriteLine($"[DEBUG] Iniciando análisis con Gemini Pro...");
 
-            var systemPrompt = "Actúa como reclutador. Analiza el CV vs la Vacante. Devuelve un JSON con: match_percentage (numero), complexity_score (numero), red_flags (lista), strengths (lista), missing_skills (lista), ats_keywords_to_add (lista), cv_improvement_suggestions (lista de objetos con section y suggestion). NO incluyas markdown, solo el texto del JSON.";
+            var systemPrompt = "Actúa como reclutador IT. Analiza CV vs Vacante. Devuelve SOLO un JSON con: match_percentage (int), complexity_score (int), red_flags (array), strengths (array), missing_skills (array), ats_keywords_to_add (array), cv_improvement_suggestions (array de objetos {section, suggestion}).";
 
             var payload = new
             {
                 contents = new[] {
-                    new { parts = new[] { new { text = $"{systemPrompt}\n\n---CV---\n{resumeText}\n\n---VACANTE---\n{jobText}" } } }
+                    new { parts = new[] { new { text = $"{systemPrompt}\n\nCV:\n{resumeText}\n\nVACANTE:\n{jobText}" } } }
                 }
             };
 
-            var fullUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+            var fullUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={_apiKey}";
 
             var jsonPayload = JsonSerializer.Serialize(payload);
             var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
@@ -46,8 +46,8 @@ namespace CareerCopilot.Api.Services
 
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"[DEBUG] ERROR GEMINI: {responseBody}");
-                throw new Exception($"Gemini Error: {response.StatusCode}");
+                Console.WriteLine($"[DEBUG] Error Crítico de Google: {responseBody}");
+                throw new Exception($"Google respondió con error: {response.StatusCode}");
             }
 
             using var doc = JsonDocument.Parse(responseBody);
@@ -61,8 +61,8 @@ namespace CareerCopilot.Api.Services
 
         public async Task<string> GenerateCoverLetterAsync(string resumeText, string jobText)
         {
-            var fullUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
-            var payload = new { contents = new[] { new { parts = new[] { new { text = $"Escribe una carta de presentación breve para este CV:\n{resumeText}\ny esta vacante:\n{jobText}" } } } } };
+            var fullUrl = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key={_apiKey}";
+            var payload = new { contents = new[] { new { parts = new[] { new { text = $"Escribe una carta de presentación para este CV:\n{resumeText}\ny esta vacante:\n{jobText}" } } } } };
             var response = await _httpClient.PostAsync(fullUrl, new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json"));
             var body = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(body);
