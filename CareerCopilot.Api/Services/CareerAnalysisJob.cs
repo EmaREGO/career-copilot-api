@@ -1,6 +1,8 @@
 ﻿using CareerCopilot.Api.Data;
 using CareerCopilot.Api.Models;
 using Hangfire;
+using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace CareerCopilot.Api.Services
 {
@@ -31,13 +33,19 @@ namespace CareerCopilot.Api.Services
                 var jobText = await _scraper.ScrapeJobDescriptionAsync(jobUrl);
 
                 // Usar directamente el 'resumeText' que llegó por parámetro
-                var resultJson = await _llmService.AnalyzeMatchAsync(resumeText, jobText);
+                var jsonResult = await _llmService.AnalyzeMatchAsync(resumeText, jobText);
+
+                using var doc = JsonDocument.Parse(jsonResult);
+                if (doc.RootElement.TryGetProperty("match_percentage", out var percentageElement))
+                {
+                    // Extraemos el valor del JSON y lo asignamos a la columna de la DB
+                    eval.GlobalMatchPercentage = percentageElement.GetDecimal();
+                }
 
                 // Guardar resultados
-                eval.ResultJson = resultJson;
+                eval.ResultJson = jsonResult; 
                 eval.Status = "Completed";
                 eval.CompletedAt = DateTime.UtcNow;
-
                 await _db.SaveChangesAsync();
             }
             catch (Exception ex)
