@@ -22,18 +22,22 @@ builder.Services.AddHangfire(config => config
     .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
     .UseSimpleAssemblyNameTypeSerializer()
     .UseRecommendedSerializerSettings()
-    .UsePostgreSqlStorage(c => c.UseNpgsqlConnection(connectionString)));
+    .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(connectionString), new PostgreSqlStorageOptions
+    {
+        SchemaName = "hangfire",
+        PrepareSchemaIfNecessary = true, 
+        QueuePollInterval = TimeSpan.FromSeconds(15)
+    }));
 
 builder.Services.AddHangfireServer();
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowAll", policy => {
-        policy.AllowAnyOrigin()
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
     });
 });
 
@@ -51,7 +55,6 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseCors("AllowAll");
-
 app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
@@ -62,4 +65,5 @@ app.UseSwaggerUI(c =>
 app.UseAuthorization();
 app.MapControllers();
 app.UseHangfireDashboard();
+
 app.Run();
