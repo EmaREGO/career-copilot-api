@@ -54,24 +54,8 @@ namespace CareerCopilot.Api.Controllers
             var eval = await _db.Evaluations.FindAsync(id);
             if (eval == null) return NotFound();
 
-            object? analysisResult = null;
-            if (!string.IsNullOrEmpty(eval.ResultJson) && eval.ResultJson != "{}")
-            {
-                try
-                {
-                    var options = new JsonSerializerOptions
-                    {
-                        AllowTrailingCommas = true,
-                        PropertyNameCaseInsensitive = true,
-                        ReadCommentHandling = JsonCommentHandling.Skip
-                    };
-                    analysisResult = JsonSerializer.Deserialize<object>(eval.ResultJson, options);
-                }
-                catch
-                {
-                    analysisResult = new { raw_text = eval.ResultJson };
-                }
-            }
+
+            using var jsonDoc = JsonDocument.Parse(string.IsNullOrEmpty(eval.ResultJson) ? "{}" : eval.ResultJson);
 
             return Ok(new
             {
@@ -79,7 +63,8 @@ namespace CareerCopilot.Api.Controllers
                 eval.Status,
                 eval.CreatedAt,
                 eval.CompletedAt,
-                Analysis = analysisResult
+                eval.GlobalMatchPercentage, 
+                Analysis = jsonDoc.RootElement /
             });
         }
     }

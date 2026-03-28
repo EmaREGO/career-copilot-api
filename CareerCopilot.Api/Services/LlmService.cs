@@ -28,16 +28,20 @@ namespace CareerCopilot.Api.Services
         public async Task<string> AnalyzeMatchAsync(string resumeText, string jobText)
         {
             // El prompt ahora exige el formato JSON para que tu Front-end pueda leerlo
-            var systemPrompt = @"Actúa como Arquitecto de Software Senior. Analiza el CV vs la Vacante. 
-                Devuelve EXCLUSIVAMENTE un JSON válido con esta estructura:
+            vvar systemPrompt = @"Actúa como Arquitecto de Software Senior y Reclutador Técnico experto.
+                Analiza el CV vs la Vacante y devuelve ÚNICAMENTE un JSON con esta estructura exacta:
                 {
-                    ""match_percentage"": 0,
-                    ""complexity_score"": 0,
-                    ""red_flags"": [],
-                    ""strengths"": [],
-                    ""missing_skills"": [],
-                    ""ats_keywords_to_add"": [],
-                    ""cv_improvement_suggestions"": []
+                    ""match_percentage"": 45,
+                    ""complexity_score"": 3,
+                    ""red_flags"": [
+                        { ""flag"": ""Título corto"", ""reason"": ""Explicación detallada"", ""severity"": ""High"" }
+                    ],
+                    ""strengths"": [""Dominio de C#"", ""Experiencia en Flutter""],
+                    ""missing_skills"": [""Shopify Plus"", ""Liquid""],
+                    ""ats_keywords_to_add"": [""E-commerce"", ""CRO""],
+                    ""cv_improvement_suggestions"": [
+                        { ""section"": ""Experiencia"", ""suggestion"": ""Escribe aquí la recomendación concreta."" }
+                    ]
                 }";
 
             var payload = new
