@@ -48,14 +48,18 @@ namespace CareerCopilot.Api.Controllers
             return Ok(new { Message = "Análisis iniciado.", EvaluationId = eval.Id });
         }
 
+
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetStatus(int id)
         {
             var eval = await _db.Evaluations.FindAsync(id);
             if (eval == null) return NotFound();
 
-
-            using var jsonDoc = JsonDocument.Parse(string.IsNullOrEmpty(eval.ResultJson) ? "{}" : eval.ResultJson);
+            JsonElement analysisResult = JsonDocument.Parse(
+                !string.IsNullOrEmpty(eval.ResultJson) && eval.ResultJson != "{}"
+                ? eval.ResultJson
+                : "{}"
+            ).RootElement;
 
             return Ok(new
             {
@@ -63,8 +67,8 @@ namespace CareerCopilot.Api.Controllers
                 eval.Status,
                 eval.CreatedAt,
                 eval.CompletedAt,
-                eval.GlobalMatchPercentage, 
-                Analysis = jsonDoc.RootElement /
+                eval.GlobalMatchPercentage,
+                Analysis = analysisResult
             });
         }
     }
