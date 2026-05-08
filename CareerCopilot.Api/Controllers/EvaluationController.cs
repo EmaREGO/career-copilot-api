@@ -73,12 +73,20 @@ namespace CareerCopilot.Api.Controllers
                 Analysis = analysisResult
             });
         }
+
         [HttpGet("history")]
         public async Task<IActionResult> GetHistory()
         {
             var history = await _db.Evaluations
                 .OrderByDescending(e => e.CreatedAt)
-                .Take(10) // Traemos los últimos 10
+                .Select(e => new {
+                    e.Id,
+                    e.VacancyUrl,
+                    e.Status,
+                    e.GlobalMatchPercentage,
+                    e.CreatedAt
+                })
+                .Take(10)
                 .ToListAsync();
 
             return Ok(history);
