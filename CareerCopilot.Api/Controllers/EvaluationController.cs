@@ -5,6 +5,7 @@ using CareerCopilot.Api.Models;
 using CareerCopilot.Api.Services;
 using Hangfire;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CareerCopilot.Api.Controllers
 {
@@ -71,6 +72,16 @@ namespace CareerCopilot.Api.Controllers
                 eval.GlobalMatchPercentage,
                 Analysis = analysisResult
             });
+        }
+        [HttpGet("history")]
+        public async Task<IActionResult> GetHistory()
+        {
+            var history = await _db.Evaluations
+                .OrderByDescending(e => e.CreatedAt)
+                .Take(10) // Traemos los últimos 10
+                .ToListAsync();
+
+            return Ok(history);
         }
     }
 }
