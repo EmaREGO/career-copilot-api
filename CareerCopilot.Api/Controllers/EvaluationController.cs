@@ -79,6 +79,7 @@ namespace CareerCopilot.Api.Controllers
         {
             var history = await _db.Evaluations
                 .OrderByDescending(e => e.CreatedAt)
+                .Take(10)
                 .Select(e => new {
                     e.Id,
                     e.VacancyUrl,
@@ -86,7 +87,6 @@ namespace CareerCopilot.Api.Controllers
                     e.GlobalMatchPercentage,
                     e.CreatedAt
                 })
-                .Take(10)
                 .ToListAsync();
 
             return Ok(history);
