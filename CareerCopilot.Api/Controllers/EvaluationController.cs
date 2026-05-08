@@ -22,6 +22,7 @@ namespace CareerCopilot.Api.Controllers
         }
 
         [HttpPost("analyze")]
+        [Consumes("multipart/form-data")]
         public async Task<IActionResult> Analyze([FromForm] IFormFile file, [FromQuery] string jobUrl)
         {
             if (file == null || string.IsNullOrEmpty(jobUrl))
