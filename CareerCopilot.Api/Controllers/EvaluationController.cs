@@ -13,7 +13,7 @@ namespace CareerCopilot.Api.Controllers
     public class EvaluationController : ControllerBase
     {
         private readonly ApplicationDbContext _db;
-        private readonly IPdfExtractionService _pdfService; // <--- Inyectado correctamente
+        private readonly IPdfExtractionService _pdfService; 
 
         public EvaluationController(ApplicationDbContext db, IPdfExtractionService pdfService)
         {
@@ -21,20 +21,21 @@ namespace CareerCopilot.Api.Controllers
             _pdfService = pdfService;
         }
 
+
         [HttpPost("analyze")]
         [Consumes("multipart/form-data")]
-        public async Task<IActionResult> Analyze([FromForm] IFormFile file, [FromQuery] string jobUrl)
+        public async Task<IActionResult> Analyze([FromForm] AnalyzeRequest request) 
         {
-            if (file == null || string.IsNullOrEmpty(jobUrl))
+            // Ahora accedemos a los datos a través de 'request'
+            if (request.File == null || string.IsNullOrEmpty(request.JobUrl))
                 return BadRequest("Requeridos archivo y URL.");
 
-            // Extraer el texto usando el campo inyectado '_pdfService'
-            using var stream = file.OpenReadStream();
+            using var stream = request.File.OpenReadStream();
             string resumeText = await _pdfService.ExtractTextAsync(stream);
 
             var eval = new Evaluation
             {
-                VacancyUrl = jobUrl,
+                VacancyUrl = request.JobUrl,
                 Status = "Pending",
                 CandidateProfileId = 1,
                 ResultJson = "{}"
@@ -43,8 +44,7 @@ namespace CareerCopilot.Api.Controllers
             _db.Evaluations.Add(eval);
             await _db.SaveChangesAsync();
 
-            // Encolar el trabajo en Hangfire
-            BackgroundJob.Enqueue<CareerAnalysisJob>(x => x.RunAnalysis(eval.Id, resumeText, jobUrl));
+            BackgroundJob.Enqueue<CareerAnalysisJob>(x => x.RunAnalysis(eval.Id, resumeText, request.JobUrl)); 
 
             return Ok(new { Message = "Análisis iniciado.", EvaluationId = eval.Id });
         }
@@ -73,4 +73,10 @@ namespace CareerCopilot.Api.Controllers
             });
         }
     }
+}
+
+public class AnalyzeRequest
+{
+    public required IFormFile File { get; set; }
+    public required string JobUrl { get; set; }
 }
